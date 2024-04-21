@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, BigInteger
+from sqlalchemy import Column, Integer, String, BigInteger, Boolean
 from sqlalchemy.orm import relationship
 
 from database.models import Base
@@ -12,6 +12,7 @@ class Client(Base):
     username = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
+    donation_status = Column(Boolean, default=False, nullable=False)
 
     transactions = relationship("Transaction", back_populates="client")
     feedbacks = relationship("Feedback", back_populates="client")

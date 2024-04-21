@@ -25,7 +25,7 @@ async def feedback_handler(message):
     msg = await bot.send_message(
         message.chat.id,
         text=TextMarkup.feedback(),
-        reply_markup=InlineMarkup.back_to_main_menu(),
+        reply_markup=InlineMarkup.feed_menu(),
         parse_mode="html",
     )
 

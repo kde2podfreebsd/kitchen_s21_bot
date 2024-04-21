@@ -56,3 +56,20 @@ class ClientDAL:
         except IntegrityError as e:
             await self.db_session.rollback()
             return DBTransactionStatus.ROLLBACK
+
+    async def update_donation_status(self, client_chat_id: int, donation_status: bool) -> Union[DBTransactionStatus.SUCCESS, DBTransactionStatus.ROLLBACK]:
+        existing_client = await self.db_session.execute(
+            select(Client).where(Client.chat_id == client_chat_id)
+        )
+        existing_client = existing_client.scalars().first()
+
+        if existing_client:
+            existing_client.donation_status = donation_status
+            try:
+                await self.db_session.commit()
+                return DBTransactionStatus.SUCCESS
+            except IntegrityError as e:
+                await self.db_session.rollback()
+                return DBTransactionStatus.ROLLBACK
+        else:
+            return DBTransactionStatus.ROLLBACK

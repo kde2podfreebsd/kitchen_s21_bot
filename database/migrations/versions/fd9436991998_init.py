@@ -1,8 +1,8 @@
 """init
 
-Revision ID: df2da742a595
+Revision ID: fd9436991998
 Revises: 
-Create Date: 2024-04-22 00:15:55.696235
+Create Date: 2024-04-22 02:31:07.577551
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'df2da742a595'
+revision: str = 'fd9436991998'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -32,6 +32,7 @@ def upgrade() -> None:
     sa.Column('username', sa.String(), nullable=True),
     sa.Column('first_name', sa.String(), nullable=True),
     sa.Column('last_name', sa.String(), nullable=True),
+    sa.Column('donation_status', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('chat_id')
     )
@@ -46,7 +47,7 @@ def upgrade() -> None:
     op.create_table('transaction',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('amount', sa.Float(), nullable=False),
-    sa.Column('tx_date', sa.DateTime(), nullable=False),
+    sa.Column('tx_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('client_chat_id', sa.BigInteger(), nullable=False),
     sa.ForeignKeyConstraint(['client_chat_id'], ['client.chat_id'], ),
     sa.PrimaryKeyConstraint('id')

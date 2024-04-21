@@ -1,7 +1,7 @@
 from bot.config.bot import bot
 
 
-@bot.message_handler(commands=['get_chat_info'])
+@bot.message_handler(commands=['chat_info'])
 async def get_chat_info(message):
     chat_id = message.chat.id
     chat_type = message.chat.type

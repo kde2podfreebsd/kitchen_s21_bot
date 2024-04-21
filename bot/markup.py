@@ -1,8 +1,16 @@
+from sqlalchemy import select, and_
 from telebot import formatting, types
+
+from database.dal.client import ClientDAL
+from database.models import Client
+from database.session import async_session
 
 
 class TextMarkup(object):
 
+    _sub_menu_text: str = None
+    _error_custom_invoice = None
+    _set_custom_invoice: str = None
     _invoice_text: str = None
     _after_feedback: str = None
     _feedback_text: str = None
@@ -27,6 +35,21 @@ class TextMarkup(object):
     def invoice_text(cls):
         cls._invoice_text = "Инвойс текст"
         return cls._invoice_text
+
+    @classmethod
+    def set_custom_invoice(cls):
+        cls._set_custom_invoice = "Укажите сумму доната в рублях"
+        return cls._set_custom_invoice
+
+    @classmethod
+    def error_custom_invoice(cls):
+        cls._error_custom_invoice = "Вы указали не верную сумму для пополнения, попробуйте еще раз"
+        return cls._error_custom_invoice
+
+    @classmethod
+    def sub_menu_text(cls):
+        cls._sub_menu_text = "Хотите ли вы получать ежемесячное напоминание о донатах?"
+        return cls._sub_menu_text
 
 
 class InlineMarkup(object):
@@ -63,7 +86,20 @@ class InlineMarkup(object):
         )
 
     @classmethod
-    def back_to_main_menu(cls):
+    def back_to_invoice_menu(cls):
+        return types.InlineKeyboardMarkup(
+            row_width=1,
+            keyboard=[
+                [
+                    types.InlineKeyboardButton(
+                        text="Назад в меню", callback_data="donation_menu"
+                    )
+                ]
+            ],
+        )
+
+    @classmethod
+    def feed_menu(cls):
         return types.InlineKeyboardMarkup(
             row_width=1,
             keyboard=[
@@ -81,13 +117,56 @@ class InlineMarkup(object):
         )
 
     @classmethod
+    async def sub_on_donation_alert(cls, chat_id: int):
+        async with async_session() as session:
+            existing_user = await session.execute(
+                select(Client).where(and_(Client.chat_id == chat_id))
+            )
+            existing_user = existing_user.scalars().first()
+
+            if existing_user.donation_status:
+                return types.InlineKeyboardMarkup(
+                    row_width=1,
+                    keyboard=[
+                        [
+                            types.InlineKeyboardButton(
+                                text="Отписаться от рассылки", callback_data="unsub_on_donation_alert"
+                            )
+                        ],
+                        [
+                            types.InlineKeyboardButton(
+                                text="Назад в меню", callback_data="donation_menu"
+                            )
+                        ]
+                    ],
+                )
+
+            else:
+
+                return types.InlineKeyboardMarkup(
+                    row_width=1,
+                    keyboard=[
+                        [
+                            types.InlineKeyboardButton(
+                                text="Подписаться на рассылку", callback_data="sub_on_donation_alert"
+                            )
+                        ],
+                        [
+                            types.InlineKeyboardButton(
+                                text="Назад в меню", callback_data="donation_menu"
+                            )
+                        ]
+                    ],
+                )
+
+    @classmethod
     def PaymentBtnList(cls, chat_id: int):
         return types.InlineKeyboardMarkup(
             row_width=2,
             keyboard=[
                 [
                     types.InlineKeyboardButton(
-                        "Мои донаты", callback_data=f"my_donations"
+                        "Мои донаты", callback_data="my_donations"
                     )
                 ],
                 [
@@ -109,6 +188,11 @@ class InlineMarkup(object):
                     ),
                     types.InlineKeyboardButton(
                         "Задонатить 1000₽", callback_data=f"payment1000#{chat_id}"
+                    )
+                ],
+                [
+                    types.InlineKeyboardButton(
+                        "Выбрать свою сумму", callback_data=f"payment_n_sum#{chat_id}"
                     )
                 ],
                 [types.InlineKeyboardButton("◀️ Назад", callback_data="back_main_menu")],

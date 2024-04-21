@@ -11,6 +11,7 @@ from telebot.asyncio_filters import (
 
 from bot.handlers.start_handler import welcome_handler, _start_message, main_menu
 from bot.handlers.inline_handler import HandlerInlineMiddleware
+from bot.handlers.chat_info_handler import get_chat_info
 
 
 class Bot:
