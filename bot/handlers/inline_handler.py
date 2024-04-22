@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from bot.config.bot import bot
 from bot.handlers.feedback_handler import feedback_handler, my_feedbacks
 from bot.handlers.invoice_handler import my_tx
@@ -6,10 +8,31 @@ from bot.handlers.invoice_handler import invoice_menu
 from bot.handlers.invoice_handler import payment100, payment200, payment500, payment1000, set_custom_invoice_1, sub_donation_menu
 from database.dal.client import ClientDAL
 from database.session import async_session
+from bot.handlers.reports_handler import send_report
 
 
 @bot.callback_query_handler(func=lambda call: True)
 async def HandlerInlineMiddleware(call):
+
+    if "sub_on_donation_alert" in call.data:
+        async with async_session() as session:
+            client_dal = ClientDAL(session)
+            next_donation_time = datetime.now() + timedelta(days=30)
+            await client_dal.update_next_donation_time(
+                client_chat_id=call.message.chat.id,
+                next_donation_time=next_donation_time
+            )
+            client_chat_id = call.message.chat.id
+            await client_dal.update_donation_status(client_chat_id, donation_status=True)
+        await sub_donation_menu(call.message)
+
+    if "unsub_on_donation_alert" in call.data:
+        async with async_session() as session:
+            client_dal = ClientDAL(session)
+            client_chat_id = call.message.chat.id
+            await client_dal.update_donation_status(client_chat_id, donation_status=False)
+        await sub_donation_menu(call.message)
+
     if call.data == "feedback":
         await feedback_handler(call.message)
 
@@ -53,16 +76,5 @@ async def HandlerInlineMiddleware(call):
     if "payment_n_sum" in call.data:
         await set_custom_invoice_1(call.message)
 
-    if "sub_on_donation_alert" in call.data:
-        async with async_session() as session:
-            client_dal = ClientDAL(session)
-            client_chat_id = call.message.chat.id
-            await client_dal.update_donation_status(client_chat_id, donation_status=True)
-        await sub_donation_menu(call.message)
-
-    if "unsub_on_donation_alert" in call.data:
-        async with async_session() as session:
-            client_dal = ClientDAL(session)
-            client_chat_id = call.message.chat.id
-            await client_dal.update_donation_status(client_chat_id, donation_status=False)
-        await sub_donation_menu(call.message)
+    if "report" in call.data:
+        await send_report(call.message)

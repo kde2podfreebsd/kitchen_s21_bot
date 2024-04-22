@@ -12,6 +12,7 @@ from telebot.asyncio_filters import (
 from bot.handlers.start_handler import welcome_handler, _start_message, main_menu
 from bot.handlers.inline_handler import HandlerInlineMiddleware
 from bot.handlers.chat_info_handler import get_chat_info
+from bot.middleware.scheduler import scheduled_tasks
 
 
 class Bot:
@@ -29,12 +30,13 @@ class Bot:
         bot.add_custom_filter(IsDigitFilter())
 
         bot.setup_middleware(FloodingMiddleware(1))
+        self.scheduled_tasks = scheduled_tasks
 
         self.provider_token: str = os.getenv("TELEGRAM_PAYMENT_BOT_TOKEN")
 
-    @staticmethod
-    async def polling():
+    async def polling(self):
         task1 = asyncio.create_task(bot.infinity_polling())
+        self.scheduled_tasks.run()
         await task1
 
 

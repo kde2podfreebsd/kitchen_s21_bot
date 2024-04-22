@@ -1,3 +1,4 @@
+import datetime
 import os
 from math import ceil
 
@@ -14,6 +15,7 @@ from database.dal.transactions import TransactionDAL
 from bot.middleware.context_middleware import message_context_manager
 from bot.config import provider_token
 from database.session import async_session, DBTransactionStatus
+from gSheets.google_sheets_api import GoogleSheetsAPI
 
 
 class Prices:
@@ -48,7 +50,7 @@ async def invoice_menu(message):
 
 
 async def payment100(message):
-
+    await message_context_manager.delete_msgId_from_help_menu_dict(chat_id=message.chat.id)
     msg = await bot.send_invoice(
         message.chat.id,  # chat_id
         "Задонатить 100₽",  # title
@@ -66,7 +68,7 @@ async def payment100(message):
 
 
 async def payment200(message):
-
+    await message_context_manager.delete_msgId_from_help_menu_dict(chat_id=message.chat.id)
     msg = await bot.send_invoice(
         message.chat.id,  # chat_id
         "Задонатить 200₽",  # title
@@ -84,7 +86,7 @@ async def payment200(message):
 
 
 async def payment500(message):
-
+    await message_context_manager.delete_msgId_from_help_menu_dict(chat_id=message.chat.id)
     msg = await bot.send_invoice(
         message.chat.id,  # chat_id
         "Задонатить 500₽",  # title
@@ -102,7 +104,7 @@ async def payment500(message):
 
 
 async def payment1000(message):
-
+    await message_context_manager.delete_msgId_from_help_menu_dict(chat_id=message.chat.id)
     msg = await bot.send_invoice(
         message.chat.id,  # chat_id
         "Задонатить 1000₽",  # title
@@ -115,6 +117,24 @@ async def payment1000(message):
     )
     message_context_manager.add_msgId_to_help_menu_dict(
         chat_id=message.chat.id,
+        msgId=msg.id
+    )
+
+
+async def scheduled_payment(chat_id: int):
+    await message_context_manager.delete_msgId_from_help_menu_dict(chat_id=chat_id)
+    msg = await bot.send_invoice(
+        chat_id,  # chat_id
+        "Задонатить 500₽",  # title
+        "Задонатить 500₽",  # description
+        "Задонатить 500₽",  # invoice_payload
+        provider_token,
+        "RUB",
+        Prices.prices500,
+        photo_url='https://www.meme-arsenal.com/memes/b96241565f04a5a8506a74c7558615ee.jpg'
+    )
+    message_context_manager.add_msgId_to_help_menu_dict(
+        chat_id=chat_id,
         msgId=msg.id
     )
 
@@ -144,7 +164,7 @@ async def set_custom_invoice_1(message):
 
 @bot.message_handler(state=PaymentState.set_payment)
 async def set_custom_invoice_2(message):
-    if not message.text.isdigit() or int(message.text) < 1:
+    if not message.text.isdigit() or int(message.text) < 60:
         await bot.send_message(
             chat_id=message.chat.id,
             text=TextMarkup.error_custom_invoice(),
@@ -226,7 +246,14 @@ async def got_payment(message):
             client_chat_id=message.chat.id,
             amount=message.successful_payment.total_amount / 100
         )
+        total_recharge_amount_last_month = await tx_dal.total_recharge_amount_last_month()
+        total_recharge_amount = await tx_dal.total_recharge_amount()
     await successful_tx(message)
+
+    sheets_api = GoogleSheetsAPI()
+    sheets_api.write_transaction(message.chat.id, message.chat.username, message.successful_payment.total_amount / 100, datetime.datetime.now())
+    sheets_api.write_total_recharge_amount_last_month(value=total_recharge_amount_last_month)
+    sheets_api.write_total_recharge_amount(value=total_recharge_amount)
 
 
 async def sub_donation_menu(message):
@@ -234,7 +261,7 @@ async def sub_donation_menu(message):
 
     msg = await bot.send_message(
         chat_id=message.chat.id,
-        text=TextMarkup.sub_menu_text(),
+        text=await TextMarkup.sub_menu_text(chat_id=message.chat.id),
         reply_markup=await InlineMarkup.sub_on_donation_alert(chat_id=message.chat.id),
         parse_mode="html"
     )
@@ -255,7 +282,7 @@ async def my_tx(message, page):
         tx_dal = TransactionDAL(session)
         txs = await tx_dal.get_tx_by_client_chat_id(client_chat_id=message.chat.id)
 
-        if txs == DBTransactionStatus.NOT_EXIST:
+        if not txs:
             msg = await bot.send_message(
                 chat_id=message.chat.id,
                 text="У вас пока нет транзакций.",
@@ -280,7 +307,7 @@ async def my_tx(message, page):
                 chunks.append(txs[i:i + TRANSACTION_STRINGS_PER_PAGE])
                 i += TRANSACTION_STRINGS_PER_PAGE
 
-            data_to_display = chunks[page - 1]
+            data_to_display = chunks[page - 1] if page <= len(chunks) else []
 
             msg_text = ""
             number = 1 + (page - 1) * TRANSACTION_STRINGS_PER_PAGE
@@ -317,4 +344,3 @@ async def my_tx(message, page):
         chat_id=message.chat.id,
         msgId=msg.id
     )
-

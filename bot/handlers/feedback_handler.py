@@ -13,6 +13,7 @@ from telebot.asyncio_handler_backends import State, StatesGroup
 from database.dal.admin_groups import AdminGroupsDAL
 from database.dal.feedback import FeedbackDAL
 from database.session import async_session, DBTransactionStatus
+from gSheets.google_sheets_api import GoogleSheetsAPI
 
 
 class FeedBackStates(StatesGroup):
@@ -63,6 +64,14 @@ async def get_feedback(message):
             text=message.text
         )
 
+    sheets_api = GoogleSheetsAPI()
+    sheets_api.write_feedback(
+        client_chat_id=message.chat.id,
+        client_username=message.chat.username,
+        feedback=message.text,
+        feed_date=datetime.datetime.now()
+    )
+
     msg = await bot.send_message(
         chat_id=message.chat.id,
         text=TextMarkup.after_feedback(),
@@ -82,7 +91,7 @@ async def my_feedbacks(message, page):
         feedback_dal = FeedbackDAL(session)
         feeds = await feedback_dal.get_feedbacks_by_client_chat_id(client_chat_id=message.chat.id)
 
-        if feeds == DBTransactionStatus.NOT_EXIST:
+        if not feeds:
             msg = await bot.send_message(
                 chat_id=message.chat.id,
                 text="У вас пока нет отзывов.",
@@ -107,7 +116,7 @@ async def my_feedbacks(message, page):
                 chunks.append(feeds[i:i + FEEDBACK_STRINGS_PER_PAGE])
                 i += FEEDBACK_STRINGS_PER_PAGE
 
-            data_to_display = chunks[page - 1]
+            data_to_display = chunks[page - 1] if page <= len(chunks) else []
 
             msg_text = ""
             number = 1 + (page - 1) * FEEDBACK_STRINGS_PER_PAGE

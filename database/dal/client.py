@@ -1,5 +1,6 @@
 import asyncio
-from typing import Union
+import datetime
+from typing import Union, List
 from uuid import uuid4
 
 from psycopg2 import IntegrityError
@@ -73,3 +74,28 @@ class ClientDAL:
                 return DBTransactionStatus.ROLLBACK
         else:
             return DBTransactionStatus.ROLLBACK
+
+    async def update_next_donation_time(self, client_chat_id: int, next_donation_time: datetime.date) -> Union[DBTransactionStatus.SUCCESS, DBTransactionStatus.ROLLBACK]:
+        existing_client = await self.db_session.execute(
+            select(Client).where(Client.chat_id == client_chat_id)
+        )
+        existing_client = existing_client.scalars().first()
+
+        if existing_client:
+            existing_client.next_donation_time = next_donation_time
+            try:
+                await self.db_session.commit()
+                return DBTransactionStatus.SUCCESS
+            except IntegrityError as e:
+                await self.db_session.rollback()
+                return DBTransactionStatus.ROLLBACK
+        else:
+            return DBTransactionStatus.ROLLBACK
+
+    async def get_donating_clients(self) -> Union[List[Client], None]:
+        donating_clients = await self.db_session.execute(
+            select(Client).where(Client.donation_status == True)
+        )
+        donating_clients = donating_clients.scalars().all()
+        return donating_clients
+

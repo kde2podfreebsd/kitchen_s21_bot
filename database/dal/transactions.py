@@ -1,8 +1,8 @@
 import asyncio
 from typing import Union
-from datetime import datetime
+from datetime import datetime, timedelta
 from psycopg2 import IntegrityError
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from database.models.client import Client
@@ -68,3 +68,33 @@ class TransactionDAL:
         )
         all_transactions = all_transactions.scalars().all()
         return all_transactions
+
+    async def get_all_tx(self) -> Union[list, None]:
+        all_transactions = await self.db_session.execute(
+            select(Transaction).order_by(Transaction.id)
+        )
+        all_transactions = all_transactions.scalars().all()
+        return all_transactions
+
+    async def total_recharge_amount(self) -> Union[float, None]:
+        async with async_session() as session:
+            total_amount = await session.scalar(
+                select(func.sum(Transaction.amount))
+            )
+            return total_amount
+
+    async def total_recharge_amount_last_month(self) -> Union[float, None]:
+        async with async_session() as session:
+            last_month = datetime.now() - timedelta(days=30)
+            total_amount = await session.scalar(
+                select(func.sum(Transaction.amount)).where(Transaction.tx_date >= last_month)
+            )
+            return total_amount
+
+    async def total_recharge_amount_in_period(self, from_date: datetime, till_date: datetime) -> Union[float, None]:
+        async with async_session() as session:
+            total_amount = await session.scalar(
+                select(func.sum(Transaction.amount))
+                .where(Transaction.tx_date.between(from_date, till_date))
+            )
+            return total_amount

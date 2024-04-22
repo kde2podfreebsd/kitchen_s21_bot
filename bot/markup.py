@@ -1,3 +1,6 @@
+import os
+from dotenv import load_dotenv
+
 from sqlalchemy import select, and_
 from telebot import formatting, types
 
@@ -5,9 +8,13 @@ from database.dal.client import ClientDAL
 from database.models import Client
 from database.session import async_session
 
+load_dotenv()
+
 
 class TextMarkup(object):
 
+    _report_text: str = None
+    _sub_alert_text: str = None
     _sub_menu_text: str = None
     _error_custom_invoice = None
     _set_custom_invoice: str = None
@@ -38,7 +45,7 @@ class TextMarkup(object):
 
     @classmethod
     def set_custom_invoice(cls):
-        cls._set_custom_invoice = "Укажите сумму доната в рублях"
+        cls._set_custom_invoice = "Укажите сумму доната в рублях. Минимальная сумма для пополнения - 60₽"
         return cls._set_custom_invoice
 
     @classmethod
@@ -47,9 +54,30 @@ class TextMarkup(object):
         return cls._error_custom_invoice
 
     @classmethod
-    def sub_menu_text(cls):
-        cls._sub_menu_text = "Хотите ли вы получать ежемесячное напоминание о донатах?"
-        return cls._sub_menu_text
+    async def sub_menu_text(cls, chat_id):
+        async with async_session() as session:
+            existing_user = await session.execute(
+                select(Client).where(and_(Client.chat_id == chat_id))
+            )
+            existing_user = existing_user.scalars().first()
+
+            if existing_user.donation_status:
+                cls._sub_menu_text = f"У Вас включены ежемесячные напоминания о донатиках!)\nСледующая дата напоминания: {existing_user.next_donation_time}"
+                return cls._sub_menu_text
+            else:
+                cls._sub_menu_text = "Хотите ли вы получать ежемесячное напоминание о донатах?"
+                return cls._sub_menu_text
+
+    @classmethod
+    def sub_alert_text(cls, client):
+        cls._sub_alert_text = "⭐️ Напоминание о донатах! ⭐️\n\n" \
+                  f"Привет, {client.first_name if client.first_name is not None else client.chat_id}! Пора сделать свой добрый взнос. Спасибо за поддержку! 🙏"
+        return cls._sub_alert_text
+
+    @classmethod
+    def report_text(cls, total_amount: float, last_month_amount: float):
+        cls._report_text = f"Общая сумма донатов: {total_amount}₽\nОбщая сумма донатов за последний месяц: {last_month_amount}₽\n\nВ google sheets доступны сортировки!"
+        return cls._report_text
 
 
 class InlineMarkup(object):
@@ -74,7 +102,7 @@ class InlineMarkup(object):
                 ],
                 [
                     types.InlineKeyboardButton(
-                        text="Отчетность", callback_data="donation_menu"
+                        text="Отчетность", callback_data="report"
                     )
                 ],
                 [
@@ -82,6 +110,24 @@ class InlineMarkup(object):
                         text="Ваши пожелания", callback_data="feedback"
                     )
                 ],
+            ],
+        )
+
+    @classmethod
+    def report_btn(cls):
+        return types.InlineKeyboardMarkup(
+            row_width=1,
+            keyboard=[
+                [
+                    types.InlineKeyboardButton(
+                        text="Отчетность | Google Sheets", url=os.getenv("GOOGLE_SHEETS_SHARE_LINK")
+                    )
+                ],
+                [
+                    types.InlineKeyboardButton(
+                        text="Назад в меню", callback_data="back_main_menu"
+                    )
+                ]
             ],
         )
 
