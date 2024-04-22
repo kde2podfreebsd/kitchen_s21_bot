@@ -1,11 +1,16 @@
 import os
+from enum import Enum
 from typing import Generator
 
 from dotenv import load_dotenv
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import async_session
+from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.asyncio import create_async_engine
-from enum import Enum
+from sqlalchemy.future import create_engine
+from sqlalchemy.engine import Engine
+from database.models import Base
+
 
 load_dotenv()
 
@@ -18,26 +23,28 @@ POSTGRES_DB = str(os.getenv("POSTGRES_DB"))
 
 DATABASE_URL = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
-engine = create_async_engine(
+async_engine = create_async_engine(
     DATABASE_URL,
-    future=True,
     echo=False,
+    future=True,
     execution_options={"isolation_level": "AUTOCOMMIT"},
 )
 
 async_session = async_sessionmaker(
-    engine,
-    expire_on_commit=True,
+    async_engine,
+    expire_on_commit=False,
     class_=AsyncSession
 )
 
 
 async def get_db() -> Generator:
-    try:
-        session: AsyncSession = async_session()
+    async with async_session() as session:
         yield session
-    finally:
-        await session.close()
+
+
+async def create_all():
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 class DBTransactionStatus(str, Enum):

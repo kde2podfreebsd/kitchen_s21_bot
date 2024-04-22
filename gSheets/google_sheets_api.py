@@ -1,8 +1,12 @@
 import datetime
+import os
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from gCreds import kitchens21_creds
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class GoogleSheetsAPI:
@@ -12,15 +16,15 @@ class GoogleSheetsAPI:
         self.creds = ServiceAccountCredentials.from_json_keyfile_name(kitchens21_creds, self.scope)
         self.client = gspread.authorize(self.creds)
 
-    def open_sheet(self, sheet_id: str = '1LcUtVUIM6aMeOyiaFqqO1xcNiOyTazxYfIf2b44i0pI'):
+    def open_sheet(self, sheet_id: str = os.getenv("GOOGLE_SHEET_ID")):
         return self.client.open_by_key(sheet_id)
 
-    def read_data(self, range_name, sheet_id: str = '1LcUtVUIM6aMeOyiaFqqO1xcNiOyTazxYfIf2b44i0pI'):
+    def read_data(self, range_name, sheet_id: str = os.getenv("GOOGLE_SHEET_ID")):
         sheet = self.open_sheet(sheet_id)
         worksheet = sheet.sheet1
         return worksheet.get(range_name)
 
-    def write_transaction(self, client_chat_id, client_username, amount, tx_date, sheet_id: str = '1LcUtVUIM6aMeOyiaFqqO1xcNiOyTazxYfIf2b44i0pI'):
+    def write_transaction(self, client_chat_id, client_username, amount, tx_date, sheet_id: str = os.getenv("GOOGLE_SHEET_ID")):
         sheet = self.open_sheet(sheet_id)
         worksheet = sheet.worksheet("Донатики")
 
@@ -32,7 +36,7 @@ class GoogleSheetsAPI:
 
         worksheet.update(f'A{index}', [[client_chat_id, client_username, amount, tx_date.strftime('%d-%m-%Y %H:%M:%S')]])
 
-    def write_feedback(self, client_chat_id, client_username, feedback, feed_date, sheet_id: str = '1LcUtVUIM6aMeOyiaFqqO1xcNiOyTazxYfIf2b44i0pI'):
+    def write_feedback(self, client_chat_id, client_username, feedback, feed_date, sheet_id: str = os.getenv("GOOGLE_SHEET_ID")):
         sheet = self.open_sheet(sheet_id)
         worksheet = sheet.worksheet("Список пожеланий")
 
@@ -44,12 +48,12 @@ class GoogleSheetsAPI:
 
         worksheet.update(f'A{index}', [[client_chat_id, client_username, feedback, feed_date.strftime('%d-%m-%Y %H:%M:%S')]])
 
-    def write_total_recharge_amount_last_month(self, value, sheet_id: str = '1LcUtVUIM6aMeOyiaFqqO1xcNiOyTazxYfIf2b44i0pI'):
+    def write_total_recharge_amount_last_month(self, value, sheet_id: str = os.getenv("GOOGLE_SHEET_ID")):
         sheet = self.open_sheet(sheet_id)
         worksheet = sheet.worksheet("Донатики")
         worksheet.update('G3', [[value]])
 
-    def write_total_recharge_amount(self, value, sheet_id: str = '1LcUtVUIM6aMeOyiaFqqO1xcNiOyTazxYfIf2b44i0pI'):
+    def write_total_recharge_amount(self, value, sheet_id: str = os.getenv("")):
         sheet = self.open_sheet(sheet_id)
         worksheet = sheet.worksheet("Донатики")
         worksheet.update('G2', [[value]])

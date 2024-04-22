@@ -2,6 +2,8 @@ import datetime
 import os
 from math import ceil
 
+import asyncio
+
 from dotenv import load_dotenv
 from telebot import types
 
@@ -165,12 +167,14 @@ async def set_custom_invoice_1(message):
 @bot.message_handler(state=PaymentState.set_payment)
 async def set_custom_invoice_2(message):
     if not message.text.isdigit() or int(message.text) < 60:
-        await bot.send_message(
+        msg = await bot.send_message(
             chat_id=message.chat.id,
             text=TextMarkup.error_custom_invoice(),
             reply_markup=InlineMarkup.hide_reply_markup,
             parse_mode="html"
         )
+        message_context_manager.add_msgId_to_help_menu_dict(message.chat.id, msg.id)
+        await asyncio.sleep(2)
         await set_custom_invoice_1(message)
     else:
         await payment_custom_price(message, price=int(message.text))
