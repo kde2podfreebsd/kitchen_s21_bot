@@ -86,8 +86,6 @@ Attaching to db, my_app, pgadmin4_container
 ❯ pip install -r requirements.txt
 ```
 
-
-
 ```shell
 # for bash
 export PYTHONPATH=$PYTHONPATH:$(pwd)
@@ -106,7 +104,7 @@ cd database/
 ```
 #### Изменить sqlalchemy.url в alembic.ini
 ```shell
-docker inspect pgdb | grep IPAddress
+docker inspect db | grep IPAddress
             "SecondaryIPAddresses": null,
             "IPAddress": "",
                     "IPAddress": "172.22.0.2",
@@ -115,6 +113,11 @@ docker inspect pgdb | grep IPAddress
 
 ```ini
 sqlalchemy.url = postgresql://dev:1234@172.22.0.2:5432/kitchen
+```
+
+#### в .env указать соотвествующий порт базы данных
+```
+POSTGRES_HOST=172.22.0.2
 ```
 
 #### Изменить target_metadata в migrations/env.py
