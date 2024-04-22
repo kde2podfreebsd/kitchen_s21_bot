@@ -141,6 +141,9 @@ python bot/main.py
 
 
 ### Help info
+
+* Тестовые данные карты yookassa: 1111 1111 1111 1026 12/22 000
+
 * [Как создать google api для google sheets](https://www.youtube.com/watch?v=zCEJurLGFRk) -> 1:50 - 5:40
 * Для добавления .gs скрипта сортировки листов нажмите в Расширения -> Apps Script![](static/app_src_1.jpg)
 * Расположите код из gSheets/gSheets_sorts.gs и разверните с конфигурацией из скрина![](static/app_src_2.jpg)
